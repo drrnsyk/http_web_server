@@ -19,6 +19,8 @@ public class Parser {
         if (args.length == 0) {
             // use default port
             // use default dir
+            directories = new String[1];
+            directories[0] = defaultDir;
             //System.out.println(defaultDir);
         } 
         else if (args.length == 2)
@@ -69,8 +71,8 @@ public class Parser {
     }
     
     public String[] getDirectories () {
-        System.out.println(directories[0]);
-        System.out.println(directories[1]);
+        ///System.out.println(directories[0]);
+        //System.out.println(directories[1]);
         return directories;
     }
 
