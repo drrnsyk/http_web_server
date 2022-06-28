@@ -4,9 +4,9 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-        Parser parser = new Parser();
-        parser.parse(args);
+        Parser parser = new Parser(); 
+        parser.parse(args); // pass argument(s) into parser to do parsing 
         HttpServer server = new HttpServer();
-        server.start();
+        server.start(); // start the http server
     }
 }

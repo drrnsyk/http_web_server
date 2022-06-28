@@ -10,32 +10,25 @@ public class HttpServer {
 
     // properties
     private Parser parser;
-
-
-    // constructors
-
     
-
+    // constructors
 
     // methods
     public void start () throws IOException {
+        
         parser = new Parser();
-
-        ExecutorService threadPool = Executors.newFixedThreadPool(3);
-
-        ServerSocket server = new ServerSocket(parser.getPort());
-        System.out.printf("Server started, listening on port %d\n" , parser.getPort());
-        // parser.getDirectories(); // to print out directories if its correct 
         parser.checkDirectories();
 
-        while (true) {
-            Socket sock = server.accept();
-            HttpClientConnection thr = new HttpClientConnection(sock, parser.getDirectories());
-            threadPool.submit(thr);
-            System.out.println("Submitted to threadpool");
-        }
+        ExecutorService threadPool = Executors.newFixedThreadPool(3); // for multi threading
+
+        ServerSocket server = new ServerSocket(parser.getPort()); // create the socket connection
+        System.out.printf("Server started, listening on port %d\n" , parser.getPort());
         
-
+        while (true) {
+            Socket sock = server.accept(); // accept request
+            HttpClientConnection thr = new HttpClientConnection(sock, parser.getDirectories()); // pass the socket connection and list of directories to threads for execution
+            threadPool.submit(thr);
+            System.out.println("Client connection submitted to threadpool");
+        }
     }
-
 }

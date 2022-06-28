@@ -1,69 +1,48 @@
 package vttp2022.httpwebserver;
 
 import java.io.File;
+import java.util.LinkedList;
+import java.util.List;
 
 public class Parser {
     
     // properties
     private static int port = 3000;
-    private static String defaultDir = "./";
+    private static String directory = "./";
     private static String[] directories;
-
+    private List<String> tokens = new LinkedList<>();
 
     // constructors
 
 
-
     // methods
     public void parse (String[] args) {
-        if (args.length == 0) {
-            // use default port
-            // use default dir
-            directories = new String[1];
-            directories[0] = defaultDir;
-            //System.out.println(defaultDir);
-        } 
-        else if (args.length == 2)
-        {
-            if (args[0].equalsIgnoreCase("--port")) {
-                port = Integer.parseInt(args[1]);
-            }
-            else if (args[0].equalsIgnoreCase("--docRoot")) {
-                port = 3000;
-                System.out.println(port);
-                String[] dirArray = args[1].split(":");
-                directories = new String[dirArray.length];
-                directories = dirArray;
-                // System.out.println(dirArray[0]);
-                // System.out.println(dirArray[1]);
-                // defaultDir = dirArray[0];
-                // if (dirArray.length > 1) {
-                //     directoriesArray = dirArray[1].split("/");
-                //     directoriesArray[0] = defaultDir;
-                //     for (int i = 1; i < directoriesArray.length; i++) {
-                //         directoriesArray[i] = "./" + directoriesArray[i];
-                //     }
-                // }
+
+        // tokenize it into a LinkedList, so that we can iterate it by removing the front of the token
+        for (int i = 0; i < args.length; i++) {
+            tokens.add(args[i]); 
+        }
+
+        // check the conditions, ensure port and directory are allocated the correct values or left at the default values
+        if (tokens.size() > 0) {
+            if (tokens.get(0).equalsIgnoreCase("--port")) {
+                tokens.remove(0);
+                port = Integer.parseInt(tokens.get(0));
+                tokens.remove(0);
+                if (tokens.size() > 0 && tokens.get(0).equalsIgnoreCase("--docRoot")) {
+                    tokens.remove(0);
+                    directory = tokens.get(0);
+                }
+            } 
+            else if (tokens.get(0).equalsIgnoreCase("--docRoot")) {
+                tokens.remove(0);
+                directory = tokens.get(0);
             }
         }
-        else if (args.length == 4) {
-            port = Integer.parseInt(args[1]);
-            if (args[2].equalsIgnoreCase("--docRoot")) {
-                String[] dirArray = args[3].split(":");
-                directories = new String[dirArray.length];
-                directories = dirArray;
-                // System.out.println(dirArray[0]);
-                // System.out.println(dirArray[1]);
-                // defaultDir = dirArray[0];
-                // if (dirArray.length > 1) {
-                //     directoriesArray = dirArray[1].split("/");
-                //     directoriesArray[0] = defaultDir;
-                //     for (int i = 1; i < directoriesArray.length; i++) {
-                //         directoriesArray[i] = "./" + directoriesArray[i];
-                //     }
-                // }
-            }
-        }
+
+        // maintain an array of directories by regex ":"
+        directories = new String[args.length];
+        directories = directory.split(":");
     }
 
     public int getPort () {
@@ -71,8 +50,6 @@ public class Parser {
     }
     
     public String[] getDirectories () {
-        ///System.out.println(directories[0]);
-        //System.out.println(directories[1]);
         return directories;
     }
 
@@ -98,10 +75,7 @@ public class Parser {
                 System.exit(1);
                 return false;
             }
-            
         }
         return true;
     }
-
-
 }

@@ -1,112 +1,100 @@
 package vttp2022.httpwebserver;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.io.Reader;
 import java.net.Socket;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class HttpClientConnection implements Runnable{
     
-    private Socket sock;
+    private Socket client;
     private String[] dirArray;
-    private Parser parser;
 
-    public HttpClientConnection (Socket s , String[] d) {
-        sock = s;
-        dirArray = new String[d.length];
-        dirArray = d;
+    //constructor
+    public HttpClientConnection (Socket sock , String[] directoriesArray) {
+        client = sock;
+        dirArray = new String[directoriesArray.length];
+        dirArray = directoriesArray;
     }
 
     @Override
     public void run() {
-
         try {
-            // read client input 
-            InputStream is = sock.getInputStream();
-            DataInputStream dis = new DataInputStream(is);
-            String input = dis.readUTF();
-            String[] inputArray = input.split(" ");
-            String methodName = inputArray[0];
-            String resourceName = inputArray[1];
-            parser = new Parser();
-            
-            // check if it is a valid GET method
-            if (!inputArray[0].equalsIgnoreCase("GET")) {
-                OutputStream os = sock.getOutputStream();
-                DataOutputStream dos = new DataOutputStream(os);
-                dos.writeUTF("HTTP/1.1 405 Method Not Allowed\r\n");
-                dos.writeUTF("\r\n");
-                dos.writeUTF(methodName + " " + "not supported\r\n");
-                dos.flush();
-                dos.close();
+            // read and print request from client browser
+            InputStreamReader isr = new InputStreamReader(client.getInputStream()); // ask socket to give me the inputStream
+            BufferedReader br = new BufferedReader(isr);
+            StringBuilder request = new StringBuilder(); // piece together strings by appending
+            String line;
+            line = br.readLine();
+            while (!line.isBlank()) {
+                request.append(line + "\r\n");
+                line = br.readLine();
+            }
+            System.out.println("----------------------REQUEST----------------------");
+            System.out.println(request);
+
+            // check the conditions of request header (first line)
+            String[] strArray = request.toString().split("\n");
+            String firstLine = strArray[0]; // this will give the first header line "GET /index.html HTTP/1.1"
+            String[] firstLineArray = firstLine.split(" ");
+            String method = firstLineArray[0]; // this will give the method GET
+            String resource = firstLineArray[1]; // this will give the resource index.html
+            if (resource.equalsIgnoreCase("/"))
+                resource = "/index.html";
+            if (!method.equalsIgnoreCase("GET")) { // check if it is a GET request
+                OutputStream os = client.getOutputStream(); // ask socket to give me the outputStream
+                os.write(("HTTP/1.1 405 Method Not Allowed\r\n").getBytes());
+                os.write(("\r\n").getBytes());
+                os.write((method + " " + "not supported\r\n").getBytes()); 
+                os.flush();
+                os.close();
+                return;
+            } 
+            else if (method.equalsIgnoreCase("GET")) {
+                // check if resource exist
+                for (int i = 0; i < dirArray.length; i++) {
+                    String path = dirArray[i] + resource; // get the full path to the requested resource
+                    File resourceExists = new File(path); // instantiate the File class to use its methods 
+                    if (resourceExists.exists()) {
+                        if (resource.endsWith(".png")) {
+                            FileInputStream image = new FileInputStream(path); // to retrive file in bytes from file system with a given path
+                            OutputStream os = client.getOutputStream(); // ask socket to give me the outputStream
+                            os.write(("HTTP/1.1 200 OK\r\n").getBytes());
+                            os.write(("Content-Type: image/png\r\n").getBytes());
+                            os.write(("\r\n").getBytes());
+                            os.write((image.readAllBytes())); 
+                            os.flush();
+                            os.close();
+                            image.close();
+                            return;
+                        } 
+                        else
+                        {
+                            FileInputStream textFiles = new FileInputStream(path); // to retrive file in bytes from file system with a given path
+                            OutputStream os = client.getOutputStream(); // ask socket to give me the outputStream
+                            os.write(("HTTP/1.1 200 OK\r\n").getBytes());
+                            os.write(("\r\n").getBytes());
+                            os.write((textFiles.readAllBytes())); 
+                            os.flush();
+                            os.close();
+                            textFiles.close();
+                            return;
+                        }
+                    }   
+                }
+                OutputStream os = client.getOutputStream(); // ask socket to give me the outputStream
+                os.write(("HTTP/1.1 404 Not Found\r\n").getBytes());
+                os.write(("\r\n").getBytes());
+                os.write((resource + " " + "not found").getBytes()); 
+                os.flush();
+                os.close();
                 return;
             }
-
-            // check if the resource exist
-            for (int i = 0; i < parser.getDirectories().length; i++) {
-                dirArray = parser.getDirectories();
-                String dir = dirArray[i];
-                File directory = new File(dir + resourceName);
-                OutputStream os = sock.getOutputStream();
-                DataOutputStream dos = new DataOutputStream(os);
-
-                System.out.println(directory);
-                if (directory.exists()) {
-                    if (resourceName.endsWith(".png")) {
-                        dos.writeUTF("HTTP/1.1 200 OK\r\n");
-                        dos.writeUTF("Content-Type: image/png\r\n");
-                        dos.writeUTF("\r\n");
-                    }
-                    else 
-                    {
-                        dos.writeUTF("HTTP/1.1 200 OK\r\n");
-                        dos.writeUTF("\r\n");
-                    }
-
-                    // send resource contents as bytes
-                    byte[] bytes = new byte[2048];
-                    int size = 0;
-                    FileInputStream fis = new FileInputStream(directory);
-                    while (size >= 0) {
-                        size = fis.read(bytes);
-                        if (size > 0) {
-                            dos.write(bytes, 0, size);
-                    } 
-
-                    dos.flush();
-                    os.flush();
-                    fis.close();
-                    is.close();
-                    dos.close();
-                    os.close();
-                    return;
-                    }
-                }
-  
-                if (i == parser.getDirectories().length - 1) { // if it is at the end of the full loop, means file doesnt exist in any of the directories
-                    dos.writeUTF("HTTP/1.1 404 Not Found\r\n");
-                    dos.writeUTF("\r\n");
-                    dos.writeUTF(resourceName + " " + "not found\r\n");
-                    dos.flush();
-                    dos.close();
-                    return;
-                }
-            }
-
-        } catch (IOException ex) {
-            ex.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
